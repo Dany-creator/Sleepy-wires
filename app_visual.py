@@ -24,7 +24,7 @@ def allowed_file(filename):
 
 @app.route('/')
 def index():
-    return render_template('figma.html')
+    return render_template('index.html')
 
 @app.route('/api/evaluate_visual', methods=['POST'])
 def api_evaluate_visual():

@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Design Evaluator - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .reference-info {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+
+        .reference-info h3 {
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 12px;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .score {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .assessment {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .deviation {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid #fbbf24;
+        }
+
+        .deviation.high {
+            border-left-color: #ef4444;
+        }
+
+        .deviation.medium {
+            border-left-color: #f59e0b;
+        }
+
+        .deviation.low {
+            border-left-color: #10b981;
+        }
+
+        .deviation h4 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .deviation p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error {
+            background: #fee;
+            border: 2px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎨 Design Evaluator</h1>
+        <p class="subtitle">Evalúa tu diseño contra patrones de onboarding comprobados</p>
+
+        <div class="reference-info" id="referenceInfo">
+            <h3>📚 Diseño de Referencia</h3>
+            <p>Cargando información...</p>
+        </div>
+
+        <div class="input-group">
+            <label for="fileKey">File Key de Figma</label>
+            <input type="text" id="fileKey" placeholder="Pega el File Key aquí (ej: EAmrQDbNTqdLCg3Q2r9A)">
+        </div>
+
+        <div class="input-group">
+            <label for="openaiKey">OpenAI API key (opcional)</label>
+            <input type="password" id="openaiKey" placeholder="Pega tu OpenAI key si quieres usar tu cuenta">
+            <small style="display:block;margin-top:6px;color:#666">No se almacenará en el servidor. Si no la tienes, <a
+                    href="https://platform.openai.com/account/api-keys" target="_blank">abre la página de claves de
+                    OpenAI</a>.</small>
+        </div>
+
+        <div class="checkbox-group">
+            <input type="checkbox" id="postComments">
+            <label for="postComments">Publicar comentarios en Figma</label>
+        </div>
+
+        <button onclick="evaluate()" id="evaluateBtn">
+            Evaluar Diseño
+        </button>
+
+        <div class="error" id="error"></div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analizando diseño...</p>
+        </div>
+
+        <div class="results" id="results">
+            <h2>📊 Resultados</h2>
+            <div class="score" id="score"></div>
+
+            <div class="assessment" id="assessment"></div>
+
+            <h3 style="margin-bottom: 15px;">⚠️ Desviaciones Encontradas</h3>
+            <div id="deviations"></div>
+        </div>
+    </div>
+
+    <script>
+        // Cargar información de referencia
+        async function loadReference() {
+            try {
+                const response = await fetch('/api/reference');
+                const data = await response.json();
+
+                document.getElementById('referenceInfo').innerHTML = `
+                    <h3>📚 Diseño de Referencia</h3>
+                    <p><strong>${data.frames} frames</strong> • ${data.avg_words} palabras promedio • ${data.has_progress ? 'Con' : 'Sin'} indicadores de progreso</p>
+                `;
+            } catch (error) {
+                document.getElementById('referenceInfo').innerHTML = `
+                    <h3>⚠️ Advertencia</h3>
+                    <p>No se pudo cargar el diseño de referencia. Asegúrate de ejecutar generate_profile.py primero.</p>
+                `;
+            }
+        }
+
+        // Evaluar diseño
+        async function evaluate() {
+            const fileKey = document.getElementById('fileKey').value.trim();
+            const postComments = document.getElementById('postComments').checked;
+
+            if (!fileKey) {
+                showError('Por favor ingresa un File Key');
+                return;
+            }
+
+            // Reset UI
+            document.getElementById('error').classList.remove('show');
+            document.getElementById('results').classList.remove('show');
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('evaluateBtn').disabled = true;
+
+            try {
+                const response = await fetch('/api/evaluate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        file_key: fileKey,
+                        post_comments: postComments
+                    })
+                });
+
+                // If user provided an OpenAI key, send it along (never stored server-side)
+                const openaiKey = document.getElementById('openaiKey').value.trim();
+                if (openaiKey) {
+                    // resend with key included
+                    const response2 = await fetch('/api/evaluate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ file_key: fileKey, post_comments: postComments, openai_key: openaiKey })
+                    });
+                    const data2 = await response2.json();
+                    if (data2.error) {
+                        showError(data2.error);
+                        return;
+                    }
+                    showResults(data2);
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+
+                // Mostrar resultados
+                showResults(data);
+
+            } catch (error) {
+                showError('Error de conexión: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('evaluateBtn').disabled = false;
+            }
+        }
+
+        function showResults(data) {
+            document.getElementById('score').textContent = data.score + '/10';
+            document.getElementById('assessment').innerHTML = `
+                <strong>Evaluación General:</strong><br>
+                ${data.assessment || 'No disponible'}
+                <br><br>
+                <small>Confianza: ${data.confidence || 'N/A'}</small>
+            `;
+
+            const deviationsHTML = data.deviations.map(dev => `
+                <div class="deviation ${dev.severity}">
+                    <h4>${dev.area} [${dev.severity}]</h4>
+                    <p><strong>Referencia:</strong> ${dev.reference_value}</p>
+                    <p><strong>Tu diseño:</strong> ${dev.candidate_value}</p>
+                    <p><strong>💡 Impacto:</strong> ${dev.impact}</p>
+                </div>
+            `).join('');
+
+            document.getElementById('deviations').innerHTML = deviationsHTML || '<p>No se encontraron desviaciones significativas</p>';
+            document.getElementById('results').classList.add('show');
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = '❌ ' + message;
+            errorDiv.classList.add('show');
+        }
+
+        // Inicializar
+        loadReference();
+    </script>
+</body>
+
+</html>

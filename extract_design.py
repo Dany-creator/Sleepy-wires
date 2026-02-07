@@ -1,110 +1,138 @@
+"""
+Extractor de estructura de diseños de Figma
+Extrae datos estructurales (no visuales) de frames
+"""
 import requests
 import json
-import os
-from collections import Counter
-from dotenv import load_dotenv
+from config import Config
+from cache_manager import save_to_cache, load_from_cache
+import time
 
-load_dotenv()
-
-# We estract the file of reference 
-def figma_file(file_key, figma_token, filter_prefix=None):
-    """Extract structural dat from the Figma"""
-
-    headers = {'X-Figma-Token': figma_token}
-    url = f'https://api.figma.com/v1/files/{file_key}'
+def extract_figma_structure(file_key, figma_token, filter_prefix=None, use_cache=True):
+    """
+    Extrae la estructura de un archivo de Figma
     
+    Args:
+        file_key: ID del archivo de Figma
+        figma_token: Token de autenticación
+        filter_prefix: Filtrar frames que empiecen con este prefijo
+    
+    Returns:
+        Lista de frames con sus métricas
+    """
+    # Intentar cargar desde caché primero
+    if use_cache:
+        cached_frames = load_from_cache(file_key)
+        if cached_frames:
+            return cached_frames
+            
+    headers = {'X-Figma-Token': figma_token}
+    url = f'{Config.FIGMA_API_BASE}/files/{file_key}'
+    
+    print(f"🔍 Obteniendo archivo de Figma...")
+    time.sleep(2)
     response = requests.get(url, headers=headers)
-
+    
     if response.status_code != 200:
-        raise Exception(f"Figma API error {response.status_code}: {response.text}")
-
+        print(f"❌ Error {response.status_code}: {response.text}")
+        return None
+    
     data = response.json()
-
-    if 'document' not in data:
-        raise KeyError(f"'document' not found in response: {data}")
-
-
     frames = []
-
+    
     def traverse_node(node, depth=0):
+        """Recorre recursivamente el árbol de nodos"""
         node_type = node.get('type')
         node_name = node.get('name', '')
         
-        # Solo extraer FRAMES (no componentes ni iconos)
+        # Solo procesar FRAMES con contenido
         if node_type == 'FRAME' and depth >= 1:
-            # Filtrar por prefijo si se especifica
+            # Aplicar filtro si existe
             if filter_prefix:
                 if node_name.startswith(filter_prefix):
-                    frame_data = analyze_frame(node)
-                    frames.append(frame_data)
-                    print(f"  ✅ Extracted: {node_name}")
+                    if has_meaningful_content(node):
+                        frame_data = analyze_frame(node)
+                        frames.append(frame_data)
+                        print(f"  ✅ {node_name}")
             else:
-                # Si tiene contenido real (no es un icono vacío)
                 if has_meaningful_content(node):
                     frame_data = analyze_frame(node)
                     frames.append(frame_data)
-                    print(f"  ✅ Extracted: {node_name}")
+                    print(f"  ✅ {node_name}")
         
-        # Seguir recorriendo hijos
+        # Continuar con hijos
         for child in node.get('children', []):
             traverse_node(child, depth + 1)
     
     traverse_node(data['document'])
     return frames
 
-#Now we search for the different elements in the frame, such as text, buttons, inputs and progress bars.
 def has_meaningful_content(node):
-    """Check if frame has actual content (not just an icon)"""
+    """Verifica si un frame tiene contenido real"""
     text_count = count_text_nodes(node)
-    # Un frame de onboarding debe tener al menos algo de texto
     return text_count > 0
 
 def count_text_nodes(node, count=0):
-    """Count text nodes recursively"""
+    """Cuenta nodos de texto recursivamente"""
     if node.get('type') == 'TEXT':
-        count += 1
+        chars = node.get('characters', '').strip()
+        if chars:
+            count += 1
+    
     for child in node.get('children', []):
         count = count_text_nodes(child, count)
+    
     return count
 
 def analyze_frame(frame):
-    """Extract metrics from a single frame"""
+    """
+    Analiza un frame individual y extrae métricas
     
+    Returns:
+        Dict con métricas del frame
+    """
     texts = []
     buttons = []
     inputs = 0
     has_progress = False
+    images = 0
     
     def scan_children(node):
-        nonlocal inputs, has_progress
+        """Escanea hijos del frame"""
+        nonlocal inputs, has_progress, images
         
         node_type = node.get('type')
         node_name = node.get('name', '').lower()
         
-        # Detectar texto
+        # Texto
         if node_type == 'TEXT':
-            text_content = node.get('characters', '')
-            if text_content.strip():  # Solo textos no vacíos
+            text_content = node.get('characters', '').strip()
+            if text_content:
                 texts.append(text_content)
         
-        # Detectar botones
+        # Botones (por nombre o por componente)
         if any(keyword in node_name for keyword in ['button', 'btn', 'cta']):
             buttons.append(node.get('name'))
         
-        # Detectar inputs
-        if any(keyword in node_name for keyword in ['input', 'field', 'textfield']):
+        # Inputs
+        if any(keyword in node_name for keyword in ['input', 'field', 'textfield', 'textbox']):
             inputs += 1
         
-        # Detectar indicadores de progreso
-        if any(keyword in node_name for keyword in ['progress', 'stepper', 'step', 'indicator']):
+        # Indicadores de progreso
+        if any(keyword in node_name for keyword in ['progress', 'stepper', 'step', 'indicator', 'dots']):
             has_progress = True
         
-        # Recorrer hijos
+        # Imágenes/ilustraciones
+        if node_type in ['RECTANGLE', 'ELLIPSE', 'VECTOR'] and 'illustration' in node_name:
+            images += 1
+        
+        # Recursión
         for child in node.get('children', []):
             scan_children(child)
     
     scan_children(frame)
     
+    # Calcular palabra total
     word_count = sum(len(text.split()) for text in texts)
     
     return {
@@ -114,52 +142,73 @@ def analyze_frame(frame):
         "buttons": buttons,
         "button_count": len(buttons),
         "has_progress": has_progress,
-        "input_fields": inputs
+        "input_fields": inputs,
+        "images": images
     }
 
-if __name__ == "__main__":
-    FILE_KEY = "vv1gjwZnayFSAJ748JyR8K"
-    TOKEN = os.getenv('FIGMA_TOKEN')
+def save_frames(frames, filepath=None):
+    """Guarda frames extraídos en archivo JSON"""
+    if filepath is None:
+        filepath = Config.EXTRACTED_FRAMES_PATH
     
-    if not TOKEN:
-        print("❌ FIGMA_TOKEN not found in .env file!")
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(frames, indent=2, fp=f, ensure_ascii=False)
+    
+    print(f"\n💾 Guardado en: {filepath}")
+
+if __name__ == "__main__":
+    # Validar configuración
+    if not Config.validate():
         exit(1)
     
     print("\n" + "="*60)
-    print("🎨 FIGMA DESIGN EXTRACTOR")
+    print("🎨 EXTRACTOR DE DISEÑO DE FIGMA")
     print("="*60)
     
-    # Opción 1: Filtrar por prefijo específico
-    print("\n📋 Choose extraction mode:")
-    print("1. Extract only 'Finance Concept 01' screens (recommended)")
-    print("2. Extract only 'App Concept 01' screens")
-    print("3. Extract all screens with content")
+    # Menú de opciones
+    print("\n📋 Modo de extracción:")
+    print("1. Extraer frames de referencia (configurado en .env)")
+    print("2. Extraer de otro archivo (custom)")
     
-    choice = input("\nEnter choice (1/2/3): ").strip()
+    choice = input("\nElige opción (1/2): ").strip()
     
-    if choice == "1":
-        filter_prefix = "Finance Concept 01"
-    elif choice == "2":
-        filter_prefix = "App Concept 01"
+    if choice == "2":
+        file_key = input("File Key de Figma: ").strip()
+        prefix = input("Prefijo de frames (Enter para todos): ").strip() or None
     else:
-        filter_prefix = None
+        file_key = Config.REFERENCE_FILE_KEY
+        prefix = Config.REFERENCE_PREFIX
     
-    print(f"\n🔍 Extracting frames{f' starting with: {filter_prefix}' if filter_prefix else ''}...\n")
+    print(f"\n🔍 Extrayendo frames...")
+    if prefix:
+        print(f"🎯 Filtro: '{prefix}'")
+    print()
     
-    frames = figma_file(FILE_KEY, TOKEN, filter_prefix)
+    frames = extract_figma_structure(
+        file_key=file_key,
+        figma_token=Config.FIGMA_TOKEN,
+        filter_prefix=prefix
+    )
     
     if frames:
-        print(f"\n✅ Successfully extracted {len(frames)} frames!")
+        print(f"\n✅ {len(frames)} frames extraídos exitosamente!")
         print("\n" + "="*60)
-        print("📊 RESULTS:")
-        print("="*60 + "\n")
-        print(json.dumps(frames, indent=2))
+        print("📊 RESUMEN:")
+        print("="*60)
         
-        # Guardar en archivo
-        output_file = "extracted_frames.json"
-        with open(output_file, 'w') as f:
-            json.dump(frames, indent=2, fp=f)
+        for frame in frames:
+            print(f"\n📱 {frame['frame_name']}")
+            print(f"   • Palabras: {frame['total_words']}")
+            print(f"   • Botones: {frame['button_count']}")
+            print(f"   • Inputs: {frame['input_fields']}")
+            print(f"   • Progreso: {'Sí' if frame['has_progress'] else 'No'}")
         
-        print(f"\n💾 Saved to: {output_file}")
+        # Guardar
+        save_frames(frames)
+        
+        print("\n" + "="*60)
+        print("✅ SIGUIENTE PASO: python generate_profile.py")
+        print("="*60)
     else:
-        print("\n❌ No frames extracted")
+        print("\n❌ No se extrajeron frames")
+        print("💡 Verifica el File Key y el prefijo")

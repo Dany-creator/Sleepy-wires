@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Design Evaluator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .upload-box {
+            border: 3px dashed #ddd;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            min-height: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-box:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .upload-box.has-file {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .upload-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .upload-box p {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .preview-img {
+            max-width: 100%;
+            max-height: 200px;
+            margin-top: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .preview-img.show {
+            display: block;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .score {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .section {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .strength,
+        .deviation {
+            background: white;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .strength {
+            border-left: 4px solid #10b981;
+        }
+
+        .deviation {
+            border-left: 4px solid #f59e0b;
+        }
+
+        .deviation.high {
+            border-left-color: #ef4444;
+        }
+
+        .deviation.low {
+            border-left-color: #10b981;
+        }
+
+        .error {
+            background: #fee;
+            border: 2px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .upload-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎨 Visual Design Evaluator</h1>
+        <p class="subtitle">Sube screenshots de diseños para evaluación instantánea con IA</p>
+
+        <div class="upload-section">
+            <div class="upload-box" id="refBox" onclick="document.getElementById('refInput').click()">
+                <h3>📚 Diseño de Referencia</h3>
+                <p>Arrastra o haz clic para subir</p>
+                <img class="preview-img" id="refPreview">
+                <input type="file" id="refInput" accept="image/*" onchange="handleFileSelect(event, 'ref')">
+            </div>
+
+            <div class="upload-box" id="candBox" onclick="document.getElementById('candInput').click()">
+                <h3>🔍 Diseño a Evaluar</h3>
+                <p>Arrastra o haz clic para subir</p>
+                <img class="preview-img" id="candPreview">
+                <input type="file" id="candInput" accept="image/*" onchange="handleFileSelect(event, 'cand')">
+            </div>
+        </div>
+
+        <button onclick="evaluateDesigns()" id="evalBtn" disabled>Evaluar Diseños</button>
+
+        <div class="error" id="error"></div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analizando diseños con IA...</p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="score" id="score"></div>
+
+            <div class="section">
+                <h3>📋 Evaluación General</h3>
+                <p id="assessment"></p>
+            </div>
+
+            <div class="section">
+                <h3>💪 Fortalezas</h3>
+                <div id="strengths"></div>
+            </div>
+
+            <div class="section">
+                <h3>⚠️ Áreas de Mejora</h3>
+                <div id="deviations"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let refFile = null;
+        let candFile = null;
+
+        function handleFileSelect(event, type) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                alert('Por favor selecciona un archivo de imagen');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (type === 'ref') {
+                    refFile = file;
+                    document.getElementById('refPreview').src = e.target.result;
+                    document.getElementById('refPreview').classList.add('show');
+                    document.getElementById('refBox').classList.add('has-file');
+                } else {
+                    candFile = file;
+                    document.getElementById('candPreview').src = e.target.result;
+                    document.getElementById('candPreview').classList.add('show');
+                    document.getElementById('candBox').classList.add('has-file');
+                }
+
+                if (refFile && candFile) {
+                    document.getElementById('evalBtn').disabled = false;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function evaluateDesigns() {
+            if (!refFile || !candFile) return;
+
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('results').classList.remove('show');
+            document.getElementById('error').classList.remove('show');
+            document.getElementById('evalBtn').disabled = true;
+
+            const formData = new FormData();
+            formData.append('reference_image', refFile);
+            formData.append('candidate_image', candFile);
+
+            try {
+                const response = await fetch('/api/evaluate_visual', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+
+                showResults(data);
+
+            } catch (error) {
+                showError('Error de conexión: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('evalBtn').disabled = false;
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = '❌ ' + message;
+            errorDiv.classList.add('show');
+        }
+
+        function showResults(data) {
+            document.getElementById('score').textContent = data.score + '/10';
+            document.getElementById('assessment').textContent = data.assessment || 'No disponible';
+
+            const strengthsHTML = data.strengths.map(s =>
+                `<div class="strength">✅ ${s}</div>`
+            ).join('');
+            document.getElementById('strengths').innerHTML = strengthsHTML || '<p>No se identificaron fortalezas específicas</p>';
+
+            const deviationsHTML = data.deviations.map(d =>
+                `<div class="deviation ${d.severity}">
+                    <strong>${d.area} [${d.severity}]</strong><br>
+                    <small>Referencia: ${d.reference_value}</small><br>
+                    <small>Candidato: ${d.candidate_value}</small><br>
+                    <small>💡 ${d.impact}</small>
+                </div>`
+            ).join('');
+            document.getElementById('deviations').innerHTML = deviationsHTML || '<p>No se encontraron desviaciones significativas</p>';
+
+            document.getElementById('results').classList.add('show');
+        }
+
+        // Drag and drop
+        ['refBox', 'candBox'].forEach(id => {
+            const box = document.getElementById(id);
+            const input = document.getElementById(id === 'refBox' ? 'refInput' : 'candInput');
+
+            box.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                box.style.borderColor = '#667eea';
+            });
+
+            box.addEventListener('dragleave', () => {
+                box.style.borderColor = '#ddd';
+            });
+
+            box.addEventListener('drop', (e) => {
+                e.preventDefault();
+                box.style.borderColor = '#ddd';
+
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    input.files = dataTransfer.files;
+                    handleFileSelect({ target: input }, id === 'refBox' ? 'ref' : 'cand');
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

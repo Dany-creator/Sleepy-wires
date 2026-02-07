@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#135bec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#0a0a0c",
+                        "surface-dark": "#161b26",
+                        "border-dark": "#282e39"
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .glass-nav {
+            background: rgba(10, 10, 12, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(40, 46, 57, 0.5);
+        }
+
+        .chat-container {
+            max-width: 800px;
+        }
+
+        /* Custom scrollbar for chat message areas (WebKit + Firefox) */
+        #chat-messages,
+        #chat-messages-bottom {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(19, 91, 236, 0.7) transparent;
+            /* thumb, track */
+        }
+
+        /* WebKit-based browsers */
+        #chat-messages::-webkit-scrollbar,
+        #chat-messages-bottom::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        #chat-messages::-webkit-scrollbar-track,
+        #chat-messages-bottom::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #chat-messages::-webkit-scrollbar-thumb,
+        #chat-messages-bottom::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, rgba(19, 91, 236, 0.95), rgba(19, 91, 236, 0.6));
+            border-radius: 9999px;
+            border: 2px solid rgba(22, 27, 38, 0.6);
+        }
+
+        #chat-messages::-webkit-scrollbar-thumb:hover,
+        #chat-messages-bottom::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, rgba(19, 91, 236, 1), rgba(19, 91, 236, 0.8));
+        }
+
+        /* Animations for hero -> chat transition */
+        @keyframes fadeUp {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            to {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+        }
+
+        @keyframes fadeDown {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            to {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-up {
+            animation: fadeUp 500ms ease forwards;
+        }
+
+        .animate-fade-down {
+            animation: fadeDown 500ms ease forwards;
+        }
+
+        .animate-fade-in {
+            animation: fadeInUp 400ms ease forwards;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in-down {
+            animation: fadeInDown 400ms ease forwards;
+        }
+
+        @keyframes fadeRight {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+
+            to {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+        }
+
+        .animate-fade-right {
+            animation: fadeRight 500ms ease forwards;
+        }
+    </style>
+</head>
+<input type="file" id="refInput" accept="image/*" hidden>
+<input type="file" id="candInput" accept="image/*" hidden>
+
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+    <!-- Navigation Bar -->
+    <nav class="glass-nav sticky top-0 z-50 px-6 lg:px-20 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <div class="bg-primary p-1.5 rounded-lg flex items-center justify-center text-white">
+                <span class="material-symbols-outlined text-2xl">auto_awesome</span>
+            </div>
+            <span class="text-xl font-bold tracking-tight">Sleepy AI</span>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <button id="nav-get-started"
+                class="bg-primary hover:bg-blue-600 text-white text-sm font-bold px-5 py-2.5 rounded-lg transition-all shadow-lg shadow-primary/20">
+                Get Started
+            </button>
+        </div>
+    </nav>
+    <button id="evaluate-btn" class="bg-primary text-white px-6 py-3 rounded-lg font-bold">
+        Evaluate designs
+    </button>
+    <div style="margin-top:12px;width:380px;max-width:92%;">
+        <label class="text-sm block mb-2">OpenAI API key (opcional)</label>
+        <div
+            class="relative flex items-center bg-surface-dark border border-border-dark rounded-2xl p-2 pl-4 shadow-sm">
+            <span class="material-symbols-outlined text-slate-400 mr-3">vpn_key</span>
+            <input id="openaiKey" type="password" placeholder="sk-..."
+                class="flex-grow bg-transparent outline-none text-sm placeholder:text-slate-500" />
+        </div>
+        <p class="text-xs text-slate-400 mt-2">Pega tu clave para que el análisis use tu cuenta. No se almacenará ni se
+            muestra.</p>
+    </div>
+    <main
+        class="flex-grow flex flex-col items-center px-6 pt-6 pb-20 justify-center md:justify-start md:pt-12 md:pb-32">
+        <!-- Hero Welcome Section -->
+        <div id="hero-block" class="text-center mb-12 space-y-4 max-w-2xl">
+            <h1
+                class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight bg-gradient-to-b from-white to-slate-400 bg-clip-text text-transparent leading-[1.05] md:leading-[1.05] lg:leading-[1.05]">
+                Hello. How can I help you today?
+            </h1>
+            <p class="text-slate-400 text-lg font-light leading-relaxed">
+                Intelligent conversations, simplified for your creative flow.
+            </p>
+        </div>
+        <!-- Prompt shown after hero animation -->
+        <div id="figma-id-prompt" class="text-center mb-12 space-y-4 max-w-2xl" style="display:none;">
+            <h2
+                class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight bg-gradient-to-b from-white to-slate-400 bg-clip-text text-transparent leading-[1.05] md:leading-[1.05] lg:leading-[1.05]">
+                Please submit the reference and candidate designs using the paperclip button below to start the
+                evaluation.
+            </h2>
+        </div>
+        <!-- Chat block removed from render (original content preserved in <template id="chat-template">) -->
+
+        <!-- Get Started button under hero -->
+        <div class="flex justify-center mb-12 w-full">
+            <button id="hero-get-started"
+                class="bg-primary hover:bg-blue-600 text-white text-sm font-bold px-6 py-3 rounded-lg transition-all shadow-lg shadow-primary/20">
+                Get Started
+            </button>
+        </div>
+        <!-- Input Area Container (moved below main) -->
+    </main>
+    <!-- Chat fixed at bottom (always visible) -->
+    <div id="chat-fixed" class="fixed bottom-8 left-0 w-full px-6 lg:px-20 z-50" style="display:none;">
+        <div class="max-w-[800px] mx-auto">
+            <div id="chat-messages-bottom-wrapper">
+                <div id="chat-messages-bottom"
+                    class="space-y-6 overflow-y-auto max-h-[75vh] md:max-h-[70vh] lg:max-h-[60vh] p-4"></div>
+            </div>
+            <!-- suggestion chips removed -->
+            <div class="relative group">
+                <div
+                    class="absolute -inset-1 bg-gradient-to-r from-primary/20 to-blue-500/20 rounded-2xl blur opacity-25 group-focus-within:opacity-100 transition duration-500">
+                </div>
+                <div
+                    class="relative flex items-center bg-surface-dark border border-border-dark rounded-2xl p-2 pl-5 shadow-2xl">
+                    <input id="bottom-chat-input"
+                        class="flex-grow bg-transparent border-none focus:ring-0 text-[15px] placeholder-slate-500 py-3"
+                        placeholder="Message Lumina AI..." type="text" />
+                    <div class="flex items-center gap-2 pr-2">
+                        <button id="upload-ref-btn" class="p-2 text-slate-500 hover:text-primary transition-colors">
+                            <span class="material-symbols-outlined">attach_file</span>
+                        </button>
+                        <button class="p-2 text-slate-500 hover:text-primary transition-colors"><span
+                                class="material-symbols-outlined">mic</span></button>
+                        <button id="bottom-send-btn"
+                            class="bg-primary text-white p-2.5 rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center"><span
+                                class="material-symbols-outlined font-bold">arrow_upward</span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Centered chat input removed: input always at bottom now -->
+
+    <!-- Chat history template removed: using bottom history container instead -->
+    <!-- Footer removed per user request -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const btn = document.getElementById('hero-get-started');
+            const hero = document.getElementById('hero-block');
+            if (!btn || !hero) return;
+
+            btn.addEventListener('click', function () {
+                // animate hero text up and button down
+                hero.classList.add('animate-fade-up');
+                btn.classList.add('animate-fade-down');
+                // animate and hide navbar button as well
+                animateAndHide(document.getElementById('nav-get-started'), 'animate-fade-right');
+
+                // when animations finish, hide hero and focus bottom input
+                let finished = 0;
+                function tryShow() {
+                    finished += 1;
+                    if (finished < 2) return;
+                    const heroWrapper = hero.closest('main');
+                    if (heroWrapper) {
+                        heroWrapper.querySelectorAll('#hero-block, #hero-get-started').forEach(n => n.style.display = 'none');
+                    }
+                    // show the Figma ID prompt with a downward entrance animation
+                    const prompt = document.getElementById('figma-id-prompt');
+                    if (prompt) {
+                        prompt.style.display = '';
+                        prompt.classList.add('animate-fade-in-down');
+                        prompt.addEventListener('animationend', function () {
+                            prompt.classList.remove('animate-fade-in-down');
+                            setChatSpacing();
+                            const bottomInput = document.getElementById('bottom-chat-input');
+                            if (bottomInput) bottomInput.focus();
+                        }, { once: true });
+                    } else {
+                        setChatSpacing();
+                        const bottomInput = document.getElementById('bottom-chat-input');
+                        if (bottomInput) bottomInput.focus();
+                    }
+                }
+
+                btn.addEventListener('animationend', tryShow, { once: true });
+                hero.addEventListener('animationend', tryShow, { once: true });
+            });
+
+            // helper to animate an element and hide it when animation finishes
+            function animateAndHide(el, cls) {
+                if (!el) return;
+                if (el.style.display === 'none') return;
+                if (el.classList.contains(cls)) return;
+                el.classList.add(cls);
+                el.addEventListener('animationend', function () { el.style.display = 'none'; }, { once: true });
+            }
+
+            // Ensure main has bottom padding equal to chat height so footer isn't overlapped
+            function setChatSpacing() {
+                const chatFixed = document.getElementById('chat-fixed');
+                const mainEl = document.querySelector('main');
+                if (!chatFixed || !mainEl) return;
+                chatFixed.style.display = '';
+                const h = chatFixed.offsetHeight || 320;
+                mainEl.style.paddingBottom = (h + 24) + 'px';
+            }
+
+            function clearChatSpacing() {
+                const mainEl = document.querySelector('main');
+                if (mainEl) mainEl.style.paddingBottom = '';
+            }
+
+            window.addEventListener('resize', function () {
+                const chatFixed = document.getElementById('chat-fixed');
+                const mainEl = document.querySelector('main');
+                if (chatFixed && mainEl && chatFixed.style.display !== 'none') {
+                    const h = chatFixed.offsetHeight || 320;
+                    mainEl.style.paddingBottom = (h + 24) + 'px';
+                }
+            });
+
+            // Navbar Get Started: same transition but button fades right; also hide the hero button
+            const navBtn = document.getElementById('nav-get-started');
+            if (navBtn) {
+                navBtn.addEventListener('click', function () {
+                    // animate hero up and nav button right
+                    hero.classList.add('animate-fade-up');
+                    navBtn.classList.add('animate-fade-right');
+                    // hide hero button as well
+                    animateAndHide(document.getElementById('hero-get-started'), 'animate-fade-down');
+
+                    let finished = 0;
+                    function tryShowNav() {
+                        finished += 1;
+                        if (finished < 2) return;
+                        // hide hero block
+                        const heroWrapper = hero.closest('main');
+                        if (heroWrapper) { heroWrapper.querySelectorAll('#hero-block').forEach(n => n.style.display = 'none'); }
+                        navBtn.style.display = 'none';
+                        // show the Figma ID prompt like the hero button flow
+                        const prompt = document.getElementById('figma-id-prompt');
+                        if (prompt) {
+                            prompt.style.display = '';
+                            prompt.classList.add('animate-fade-in-down');
+                            prompt.addEventListener('animationend', function () {
+                                prompt.classList.remove('animate-fade-in-down');
+                                setChatSpacing();
+                                const bottomInput = document.getElementById('bottom-chat-input');
+                                if (bottomInput) bottomInput.focus();
+                            }, { once: true });
+                        } else {
+                            setChatSpacing();
+                            const bottomInput = document.getElementById('bottom-chat-input');
+                            if (bottomInput) bottomInput.focus();
+                        }
+                    }
+
+                    navBtn.addEventListener('animationend', tryShowNav, { once: true });
+                    hero.addEventListener('animationend', tryShowNav, { once: true });
+                });
+            }
+
+            // Chat helpers: append messages and wire send handlers
+            window.appendMessage = function (role, text) {
+                // prefer bottom container when present
+                let container = document.getElementById('chat-messages-bottom');
+                if (!container) container = document.getElementById('chat-messages');
+                if (!container) return;
+                const wrapper = document.createElement('div');
+                if (role === 'user') {
+                    wrapper.className = 'flex items-start gap-4 flex-row-reverse';
+                    wrapper.innerHTML = `
+                        <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shrink-0">
+                            <span class="material-symbols-outlined">person</span>
+                        </div>
+                        <div class="flex flex-col gap-1.5 items-end max-w-[85%]">
+                            <span class="text-xs font-semibold text-slate-500 mr-1 uppercase tracking-wider">You</span>
+                            <div class="bg-primary p-4 rounded-2xl rounded-tr-none shadow-lg shadow-primary/10"><p class="text-white leading-relaxed text-[15px]">${escapeHtml(text)}</p></div>
+                        </div>
+                    `;
+                } else {
+                    wrapper.className = 'flex items-start gap-4';
+                    wrapper.innerHTML = `
+                        <div class="w-10 h-10 rounded-xl bg-surface-dark border border-border-dark flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-primary text-xl">smart_toy</span></div>
+                        <div class="flex flex-col gap-1.5 max-w-[85%]"><span class="text-xs font-semibold text-slate-500 ml-1 uppercase tracking-wider">Lumina AI</span><div class="bg-surface-dark border border-border-dark p-4 rounded-2xl rounded-tl-none shadow-sm"><p class="leading-relaxed text-[15px]">${escapeHtml(text)}</p></div></div>
+                    `;
+                }
+                container.appendChild(wrapper);
+                // allow overflow and scroll to bottom
+                container.scrollTop = container.scrollHeight;
+            }
+
+            function escapeHtml(unsafe) { return unsafe.replace(/[&<>"']/g, function (m) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": "&#039;" }[m]; }); }
+
+            // wire bottom handlers (input always at bottom)
+            function wireBottomHandlers() {
+                const input = document.getElementById('bottom-chat-input');
+                const sendBtn = document.getElementById('bottom-send-btn');
+                const container = document.getElementById('chat-messages-bottom');
+                if (!input || !sendBtn || !container) return;
+
+                function send() {
+                    const v = input.value.trim();
+                    if (!v) return;
+                    // if the Figma prompt is visible, animate it up and hide it
+                    const prompt = document.getElementById('figma-id-prompt');
+                    if (prompt && prompt.style.display !== 'none') {
+                        animateAndHide(prompt, 'animate-fade-up');
+                    }
+                    appendMessage('user', v);
+                    input.value = '';
+                    container.scrollTop = container.scrollHeight;
+                    setTimeout(() => appendMessage('ai', 'This is a default reply. Replace with your API call.'), 600);
+                }
+
+                sendBtn.addEventListener('click', send);
+                input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); send(); } });
+            }
+
+            // call bottom handlers now that elements exist
+            wireBottomHandlers();
+        });
+
+        let refFile = null;
+        let candFile = null;
+
+        document.getElementById('evaluate-btn').addEventListener('click', async () => {
+            const { reference, candidate } = window.designState;
+
+            if (!reference || !candidate) {
+                appendMessage('ai', '❌ You must upload BOTH designs before evaluation.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('reference_image', reference);
+            formData.append('candidate_image', candidate);
+            const openaiKey = document.getElementById('openaiKey').value.trim();
+            if (openaiKey) formData.append('openai_key', openaiKey);
+
+            appendMessage('ai', '🧠 Analyzing designs...');
+
+            try {
+                const res = await fetch('/api/evaluate_visual', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await res.json();
+
+                if (data.error) {
+                    appendMessage('ai', '❌ ' + data.error);
+                    return;
+                }
+
+                appendMessage(
+                    'ai',
+                    `🎯 Score: ${data.score}/10\n\n${data.assessment}`
+                );
+
+            } catch (err) {
+                appendMessage('ai', '❌ Server error: ' + err.message);
+            }
+        });
+
+        window.designState = {
+            reference: null,
+            candidate: null
+        };
+
+        const uploadBtn = document.getElementById('upload-ref-btn');
+        const refInput = document.getElementById('refInput');
+        const candInput = document.getElementById('candInput');
+
+        uploadBtn.addEventListener('click', () => {
+            if (!designState.reference) {
+                refInput.click();
+            } else {
+                candInput.click();
+            }
+        });
+
+        refInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            designState.reference = file;
+            await appendImage('user', file);
+            appendMessage('ai', '📚 Reference design uploaded. Now upload the candidate design.');
+        });
+
+        candInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            designState.candidate = file;
+            await appendImage('user', file);
+            appendMessage('ai', '🔍 Candidate design uploaded. Ready to evaluate.');
+        });
+
+        window.designState = {
+            reference: null,
+            candidate: null
+        };
+
+        function appendImage(role, file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    let container = document.getElementById('chat-messages-bottom');
+                    if (!container) return resolve();
+
+                    const wrapper = document.createElement('div');
+                    wrapper.className = role === 'user'
+                        ? 'flex items-start gap-4 flex-row-reverse'
+                        : 'flex items-start gap-4';
+
+                    wrapper.innerHTML = `
+                <div class="max-w-[220px] rounded-xl overflow-hidden border border-border-dark">
+                    <img src="${reader.result}" class="rounded-xl" />
+                </div>
+            `;
+
+                    container.appendChild(wrapper);
+                    container.scrollTop = container.scrollHeight;
+                    // small timeout to allow image paint in UI before resolving
+                    requestAnimationFrame(() => requestAnimationFrame(resolve));
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+    </script>
+</body>
+
+</html>
